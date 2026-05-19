@@ -133,9 +133,9 @@ export default function ProfilePage() {
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-foreground">健康目标</h2>
-            <button className="text-sm text-primary font-medium flex items-center gap-1">
+            <Link href="/profile/goals" className="text-sm text-primary font-medium flex items-center gap-1">
               编辑 <ChevronRight className="h-4 w-4" />
-            </button>
+            </Link>
           </div>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-4">
@@ -160,18 +160,20 @@ export default function ProfilePage() {
         <section>
           <Card className="border-0 shadow-sm bg-gradient-to-br from-accent/10 to-primary/10">
             <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-accent/20">
-                  <TrendingUp className="h-6 w-6 text-accent" />
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-2xl bg-accent/20">
+                    <TrendingUp className="h-6 w-6 text-accent" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-card-foreground">健康趋势良好</p>
+                    <p className="text-sm text-muted-foreground">本周运动达标率 85%</p>
+                  </div>
+                  <Link href="/profile/reports">
+                    <Button variant="outline" size="sm">
+                      查看报告
+                    </Button>
+                  </Link>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-card-foreground">健康趋势良好</p>
-                  <p className="text-sm text-muted-foreground">本周运动达标率 85%</p>
-                </div>
-                <Button variant="outline" size="sm">
-                  查看报告
-                </Button>
-              </div>
             </CardContent>
           </Card>
         </section>

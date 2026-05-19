@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { 
@@ -34,7 +34,10 @@ import {
   Clock,
   Grid3X3,
   Wallet,
-  CreditCard
+  CreditCard,
+  Timer,
+  X,
+  Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -140,6 +143,68 @@ export default function DeviceDetailPage() {
   const [customPresets, setCustomPresets] = useState<{id: string, name: string, values: number[]}[]>([])
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [newPresetName, setNewPresetName] = useState("")
+
+  // 定时停止播放状态
+  const [showSleepTimerDialog, setShowSleepTimerDialog] = useState(false)
+  const [sleepTimerMode, setSleepTimerMode] = useState<"countdown" | "clock">("countdown")
+  const [countdownMinutes, setCountdownMinutes] = useState(30)
+  const [clockTime, setClockTime] = useState("")
+  const [sleepTimerActive, setSleepTimerActive] = useState(false)
+  const [sleepTimerRemaining, setSleepTimerRemaining] = useState(0) // seconds
+  const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // 快捷倒计时选项（分钟）
+  const countdownOptions = [15, 20, 30, 45, 60, 90]
+
+  // 激活定时停止
+  const activateSleepTimer = () => {
+    if (sleepTimerRef.current) clearInterval(sleepTimerRef.current)
+    let seconds = 0
+    if (sleepTimerMode === "countdown") {
+      seconds = countdownMinutes * 60
+    } else {
+      const [h, m] = clockTime.split(":").map(Number)
+      const now = new Date()
+      const target = new Date()
+      target.setHours(h, m, 0, 0)
+      if (target <= now) target.setDate(target.getDate() + 1)
+      seconds = Math.floor((target.getTime() - now.getTime()) / 1000)
+    }
+    setSleepTimerRemaining(seconds)
+    setSleepTimerActive(true)
+    setShowSleepTimerDialog(false)
+    sleepTimerRef.current = setInterval(() => {
+      setSleepTimerRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(sleepTimerRef.current!)
+          setSleepTimerActive(false)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  const cancelSleepTimer = () => {
+    if (sleepTimerRef.current) clearInterval(sleepTimerRef.current)
+    setSleepTimerActive(false)
+    setSleepTimerRemaining(0)
+  }
+
+  // 格式化剩余时间
+  const formatRemaining = (s: number) => {
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    const sec = s % 60
+    if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
+    return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
+  }
+
+  useEffect(() => {
+    return () => {
+      if (sleepTimerRef.current) clearInterval(sleepTimerRef.current)
+    }
+  }, [])
 
   // 获取当前EQ值
   const getCurrentEqValues = () => {
@@ -342,6 +407,47 @@ export default function DeviceDetailPage() {
             {/* Earbuds Controls */}
             {device.type === "earbuds" && (
               <>
+                {/* Sleep Timer */}
+                <section>
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-xl ${sleepTimerActive ? "bg-primary/20" : "bg-secondary"}`}>
+                            <Timer className={`h-5 w-5 ${sleepTimerActive ? "text-primary" : "text-secondary-foreground"}`} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-card-foreground">定时停止播放</p>
+                            {sleepTimerActive ? (
+                              <p className="text-xs text-primary font-medium">{formatRemaining(sleepTimerRemaining)} 后停止</p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">到时间自动停止音乐</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {sleepTimerActive ? (
+                            <button
+                              onClick={cancelSleepTimer}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-sm font-medium"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              取消
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setShowSleepTimerDialog(true)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium"
+                            >
+                              设置
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </section>
+
                 {/* Game Mode */}
                 <section>
                   <Card className="border-0 shadow-sm">
@@ -879,6 +985,132 @@ export default function DeviceDetailPage() {
             </Button>
             <Button onClick={saveCustomPreset}>
               保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sleep Timer Dialog */}
+      <Dialog open={showSleepTimerDialog} onOpenChange={setShowSleepTimerDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>定时停止播放</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-5">
+            {/* Mode Toggle */}
+            <div className="flex rounded-xl bg-secondary p-1 gap-1">
+              <button
+                onClick={() => setSleepTimerMode("countdown")}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  sleepTimerMode === "countdown"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground"
+                }`}
+              >
+                倒计时
+              </button>
+              <button
+                onClick={() => setSleepTimerMode("clock")}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  sleepTimerMode === "clock"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground"
+                }`}
+              >
+                指定时间点
+              </button>
+            </div>
+
+            {/* Countdown Mode */}
+            {sleepTimerMode === "countdown" && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {countdownOptions.map((min) => (
+                    <button
+                      key={min}
+                      onClick={() => setCountdownMinutes(min)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        countdownMinutes === min
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {min >= 60 ? `${min / 60}小时` : `${min}分钟`}
+                    </button>
+                  ))}
+                </div>
+                {/* Custom input */}
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center gap-2 bg-secondary rounded-xl px-4 py-3">
+                    <button
+                      onClick={() => setCountdownMinutes(Math.max(1, countdownMinutes - 5))}
+                      className="w-7 h-7 rounded-full bg-background flex items-center justify-center text-foreground font-bold shadow-sm"
+                    >
+                      -
+                    </button>
+                    <span className="flex-1 text-center text-lg font-bold text-foreground">
+                      {countdownMinutes} 分钟
+                    </span>
+                    <button
+                      onClick={() => setCountdownMinutes(Math.min(180, countdownMinutes + 5))}
+                      className="w-7 h-7 rounded-full bg-background flex items-center justify-center text-foreground font-bold shadow-sm"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  将在 <span className="text-foreground font-medium">{countdownMinutes} 分钟</span>后停止播放
+                </p>
+              </div>
+            )}
+
+            {/* Clock Mode */}
+            {sleepTimerMode === "clock" && (
+              <div className="space-y-3">
+                <div className="flex flex-col items-center gap-3">
+                  <Input
+                    type="time"
+                    value={clockTime}
+                    onChange={(e) => setClockTime(e.target.value)}
+                    className="text-center text-2xl font-bold h-14 rounded-xl"
+                  />
+                  {clockTime && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      将在 <span className="text-foreground font-medium">{clockTime}</span> 停止播放
+                    </p>
+                  )}
+                </div>
+                {/* Quick time options */}
+                <div className="grid grid-cols-3 gap-2">
+                  {["22:00", "22:30", "23:00", "23:30", "00:00", "00:30"].map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setClockTime(t)}
+                      className={`py-2 rounded-xl text-sm font-medium transition-colors ${
+                        clockTime === t
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setShowSleepTimerDialog(false)}>
+              取消
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={activateSleepTimer}
+              disabled={sleepTimerMode === "clock" && !clockTime}
+            >
+              <Check className="h-4 w-4 mr-1.5" />
+              开始计时
             </Button>
           </DialogFooter>
         </DialogContent>

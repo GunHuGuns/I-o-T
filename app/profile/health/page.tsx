@@ -13,15 +13,37 @@ import {
   Calendar,
   ChevronRight,
   AlertCircle,
-  Check
+  Check,
+  Pencil,
+  X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+
+type HealthData = {
+  height: number
+  weight: number
+  bloodType: string
+  heartRateResting: number
+  birthday: string
+  allergies: string
+  medications: string
+  conditions: string
+}
+
+const bloodTypes = ["A型", "B型", "AB型", "O型", "未知"]
 
 export default function HealthProfilePage() {
   const router = useRouter()
-  const [healthData, setHealthData] = useState({
+  const [healthData, setHealthData] = useState<HealthData>({
     height: 175,
     weight: 70,
     bloodType: "A型",
@@ -32,8 +54,41 @@ export default function HealthProfilePage() {
     conditions: "无",
   })
 
+  // Edit dialog state
+  const [editField, setEditField] = useState<keyof HealthData | null>(null)
+  const [editValue, setEditValue] = useState("")
+
   const bmi = (healthData.weight / Math.pow(healthData.height / 100, 2)).toFixed(1)
   const bmiStatus = Number(bmi) < 18.5 ? "偏瘦" : Number(bmi) < 24 ? "正常" : Number(bmi) < 28 ? "偏胖" : "肥胖"
+
+  const fieldMeta: Record<keyof HealthData, { label: string; type: "number" | "text" | "date" | "select"; unit?: string; options?: string[] }> = {
+    height:           { label: "身高",     type: "number", unit: "cm" },
+    weight:           { label: "体重",     type: "number", unit: "kg" },
+    bloodType:        { label: "血型",     type: "select", options: bloodTypes },
+    heartRateResting: { label: "静息心率", type: "number", unit: "bpm" },
+    birthday:         { label: "出生日期", type: "date" },
+    allergies:        { label: "过敏史",   type: "text" },
+    medications:      { label: "用药情况", type: "text" },
+    conditions:       { label: "既往病史", type: "text" },
+  }
+
+  const openEdit = (field: keyof HealthData) => {
+    setEditField(field)
+    setEditValue(String(healthData[field]))
+  }
+
+  const saveEdit = () => {
+    if (!editField) return
+    const meta = fieldMeta[editField]
+    const parsed = meta.type === "number" ? Number(editValue) : editValue
+    setHealthData(prev => ({ ...prev, [editField]: parsed }))
+    setEditField(null)
+  }
+
+  const displayValue = (field: keyof HealthData) => {
+    const meta = fieldMeta[field]
+    return meta.unit ? `${healthData[field]} ${meta.unit}` : String(healthData[field])
+  }
 
   return (
     <div className="min-h-screen bg-background pb-6">
@@ -78,36 +133,14 @@ export default function HealthProfilePage() {
           <h2 className="font-semibold text-foreground mb-3">基本信息</h2>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0 divide-y divide-border">
-              <HealthField 
-                icon={Ruler} 
-                label="身高" 
-                value={`${healthData.height} cm`}
-                onEdit={() => {}}
-              />
-              <HealthField 
-                icon={Scale} 
-                label="体重" 
-                value={`${healthData.weight} kg`}
-                onEdit={() => {}}
-              />
-              <HealthField 
-                icon={Droplets} 
-                label="血型" 
-                value={healthData.bloodType}
-                onEdit={() => {}}
-              />
-              <HealthField 
-                icon={Heart} 
-                label="静息心率" 
-                value={`${healthData.heartRateResting} bpm`}
-                onEdit={() => {}}
-              />
-              <HealthField 
-                icon={Calendar} 
-                label="出生日期" 
-                value={healthData.birthday}
-                onEdit={() => {}}
-              />
+              {(["height", "weight", "bloodType", "heartRateResting", "birthday"] as const).map((field) => (
+                <HealthField
+                  key={field}
+                  label={fieldMeta[field].label}
+                  value={displayValue(field)}
+                  onEdit={() => openEdit(field)}
+                />
+              ))}
             </CardContent>
           </Card>
         </section>
@@ -117,24 +150,14 @@ export default function HealthProfilePage() {
           <h2 className="font-semibold text-foreground mb-3">健康状况</h2>
           <Card className="border-0 shadow-sm">
             <CardContent className="p-0 divide-y divide-border">
-              <HealthField 
-                icon={AlertCircle} 
-                label="过敏史" 
-                value={healthData.allergies}
-                onEdit={() => {}}
-              />
-              <HealthField 
-                icon={Activity} 
-                label="用药情况" 
-                value={healthData.medications}
-                onEdit={() => {}}
-              />
-              <HealthField 
-                icon={Heart} 
-                label="既往病史" 
-                value={healthData.conditions}
-                onEdit={() => {}}
-              />
+              {(["allergies", "medications", "conditions"] as const).map((field) => (
+                <HealthField
+                  key={field}
+                  label={fieldMeta[field].label}
+                  value={displayValue(field)}
+                  onEdit={() => openEdit(field)}
+                />
+              ))}
             </CardContent>
           </Card>
         </section>
@@ -173,35 +196,74 @@ export default function HealthProfilePage() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Edit Dialog */}
+      <Dialog open={editField !== null} onOpenChange={(open) => !open && setEditField(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>修改{editField ? fieldMeta[editField].label : ""}</DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            {editField && fieldMeta[editField].type === "select" ? (
+              <div className="grid grid-cols-2 gap-2">
+                {fieldMeta[editField].options?.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setEditValue(opt)}
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl border-2 transition-colors ${
+                      editValue === opt
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border bg-background text-foreground"
+                    }`}
+                  >
+                    <span className="font-medium">{opt}</span>
+                    {editValue === opt && <Check className="h-4 w-4" />}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Input
+                type={editField ? fieldMeta[editField].type : "text"}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                className="h-12 text-base"
+                autoFocus
+              />
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setEditField(null)}>
+              取消
+            </Button>
+            <Button className="flex-1" onClick={saveEdit}>
+              <Check className="h-4 w-4 mr-1.5" />
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
 function HealthField({
-  icon: Icon,
   label,
   value,
-  onEdit
+  onEdit,
 }: {
-  icon: typeof User
   label: string
   value: string
   onEdit: () => void
 }) {
   return (
-    <button 
+    <button
       onClick={onEdit}
       className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
     >
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-secondary">
-          <Icon className="h-4 w-4 text-secondary-foreground" />
-        </div>
-        <span className="text-foreground">{label}</span>
-      </div>
+      <span className="text-foreground">{label}</span>
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground">{value}</span>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
       </div>
     </button>
   )
