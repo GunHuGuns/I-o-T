@@ -26,24 +26,6 @@ export default function DevicesPage() {
             </Link>
             <h1 className="text-xl font-bold text-foreground">设备管理</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="rounded-full"
-              onClick={() => {
-                if (scenario === "bluetooth-off") {
-                  setScenario("normal")
-                }
-              }}
-            >
-              {scenario === "bluetooth-off" ? (
-                <BluetoothOff className="h-5 w-5 text-destructive" />
-              ) : (
-                <Bluetooth className="h-5 w-5 text-primary" />
-              )}
-            </Button>
-          </div>
         </div>
       </header>
 
