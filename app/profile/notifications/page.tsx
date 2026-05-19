@@ -14,20 +14,11 @@ import {
   Mail,
   MessageSquare,
   ChevronRight,
-  Clock,
-  Check
+  Clock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 
 export default function NotificationSettingsPage() {
   const router = useRouter()
@@ -48,26 +39,8 @@ export default function NotificationSettingsPage() {
     setSettings(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const [showTimePicker, setShowTimePicker] = useState(false)
-  const [editingTime, setEditingTime] = useState<"start" | "end" | null>(null)
-  const [tempStart, setTempStart] = useState(settings.quietStart)
-  const [tempEnd, setTempEnd] = useState(settings.quietEnd)
-
-  const openTimePicker = (which: "start" | "end") => {
-    setEditingTime(which)
-    setTempStart(settings.quietStart)
-    setTempEnd(settings.quietEnd)
-    setShowTimePicker(true)
-  }
-
-  const saveTime = () => {
-    setSettings(prev => ({ ...prev, quietStart: tempStart, quietEnd: tempEnd }))
-    setShowTimePicker(false)
-  }
-
   return (
-    <>
-      <div className="min-h-screen bg-background pb-6">
+    <div className="min-h-screen bg-background pb-6">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="flex items-center gap-3 px-4 py-3">
@@ -182,11 +155,8 @@ export default function NotificationSettingsPage() {
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm text-muted-foreground">免打扰时段</span>
                     </div>
-                    <button
-                      onClick={() => openTimePicker("start")}
-                      className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
-                    >
-                      <span className="font-medium">{settings.quietStart} - {settings.quietEnd}</span>
+                    <button className="flex items-center gap-2 text-foreground">
+                      <span>{settings.quietStart} - {settings.quietEnd}</span>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </button>
                   </div>
@@ -197,51 +167,6 @@ export default function NotificationSettingsPage() {
         </section>
       </main>
     </div>
-
-      {/* Quiet Hours Time Picker Dialog */}
-      <Dialog open={showTimePicker} onOpenChange={(open) => !open && setShowTimePicker(false)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>设置免打扰时段</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-5">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">开始时间</p>
-              <Input
-                type="time"
-                value={tempStart}
-                onChange={(e) => setTempStart(e.target.value)}
-                className="h-12 text-lg font-medium text-center"
-              />
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-foreground">结束时间</p>
-              <Input
-                type="time"
-                value={tempEnd}
-                onChange={(e) => setTempEnd(e.target.value)}
-                className="h-12 text-lg font-medium text-center"
-              />
-            </div>
-            {tempStart && tempEnd && (
-              <p className="text-sm text-muted-foreground text-center">
-                每天 <span className="text-foreground font-medium">{tempStart}</span> 至{" "}
-                <span className="text-foreground font-medium">{tempEnd}</span> 不接收通知
-              </p>
-            )}
-          </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setShowTimePicker(false)}>
-              取消
-            </Button>
-            <Button className="flex-1" onClick={saveTime}>
-              <Check className="h-4 w-4 mr-1.5" />
-              确认
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
   )
 }
 

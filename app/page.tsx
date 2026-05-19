@@ -5,7 +5,7 @@ import { Bell, Plus, ChevronRight, Wifi, WifiOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { BottomNav } from "@/components/bottom-nav"
-import { ConnectedDeviceGrid } from "@/components/home-devices"
+import { ConnectedDeviceGrid, DeviceCategoryList } from "@/components/home-devices"
 import Link from "next/link"
 
 export default function HomePage() {
@@ -75,7 +75,13 @@ export default function HomePage() {
           <ConnectedDeviceGrid />
         </section>
 
-
+        {/* Device Categories */}
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-foreground">添加设备</h2>
+          </div>
+          <DeviceCategoryList />
+        </section>
 
         {/* Recent Activity */}
         <section>

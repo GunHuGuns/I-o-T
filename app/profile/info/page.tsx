@@ -11,24 +11,15 @@ import {
   Calendar,
   MapPin,
   ChevronRight,
-  Check,
-  Image as ImageIcon,
-  Trash2
+  Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 
 export default function PersonalInfoPage() {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
-  const [showAvatarMenu, setShowAvatarMenu] = useState(false)
   const [profile, setProfile] = useState({
     nickname: "张小明",
     phone: "138****8888",
@@ -40,8 +31,7 @@ export default function PersonalInfoPage() {
   })
 
   return (
-    <>
-      <div className="min-h-screen bg-background pb-6">
+    <div className="min-h-screen bg-background pb-6">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="flex items-center justify-between px-4 py-3">
@@ -68,10 +58,7 @@ export default function PersonalInfoPage() {
             <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center">
               <User className="h-12 w-12 text-primary" />
             </div>
-            <button
-              onClick={() => setShowAvatarMenu(true)}
-              className="absolute bottom-0 right-0 p-2 rounded-full bg-primary text-primary-foreground shadow-lg"
-            >
+            <button className="absolute bottom-0 right-0 p-2 rounded-full bg-primary text-primary-foreground shadow-lg">
               <Camera className="h-4 w-4" />
             </button>
           </div>
@@ -129,54 +116,6 @@ export default function PersonalInfoPage() {
         </Card>
       </main>
     </div>
-
-      {/* Avatar Action Sheet */}
-      <Dialog open={showAvatarMenu} onOpenChange={setShowAvatarMenu}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>更换头像</DialogTitle>
-          </DialogHeader>
-          <div className="py-2 space-y-2">
-            <button
-              onClick={() => setShowAvatarMenu(false)}
-              className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-secondary transition-colors"
-            >
-              <div className="p-2.5 rounded-xl bg-primary/10">
-                <Camera className="h-5 w-5 text-primary" />
-              </div>
-              <div className="text-left">
-                <p className="font-medium text-foreground">拍照</p>
-                <p className="text-xs text-muted-foreground">使用相机拍摄新头像</p>
-              </div>
-            </button>
-            <button
-              onClick={() => setShowAvatarMenu(false)}
-              className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-secondary transition-colors"
-            >
-              <div className="p-2.5 rounded-xl bg-blue-500/10">
-                <ImageIcon className="h-5 w-5 text-blue-500" />
-              </div>
-              <div className="text-left">
-                <p className="font-medium text-foreground">从相册选择</p>
-                <p className="text-xs text-muted-foreground">从手机相册中选取图片</p>
-              </div>
-            </button>
-            <button
-              onClick={() => setShowAvatarMenu(false)}
-              className="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-secondary transition-colors"
-            >
-              <div className="p-2.5 rounded-xl bg-destructive/10">
-                <Trash2 className="h-5 w-5 text-destructive" />
-              </div>
-              <div className="text-left">
-                <p className="font-medium text-destructive">删除头像</p>
-                <p className="text-xs text-muted-foreground">恢复为默认头像</p>
-              </div>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
   )
 }
 
