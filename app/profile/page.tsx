@@ -2,7 +2,6 @@
 
 import { 
   ArrowLeft, 
-  Settings, 
   ChevronRight, 
   User,
   Heart,
@@ -84,9 +83,6 @@ export default function ProfilePage() {
             </Link>
             <h1 className="text-xl font-bold text-foreground">我的</h1>
           </div>
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <Settings className="h-5 w-5" />
-          </Button>
         </div>
       </header>
 
