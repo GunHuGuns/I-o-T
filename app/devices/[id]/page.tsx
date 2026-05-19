@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { 
@@ -11,30 +11,47 @@ import {
   Watch,
   Headphones,
   Scale,
-  Settings,
   RefreshCw,
   Power,
-  Volume2,
-  VolumeX,
   Music,
   Phone,
   Heart,
   Moon,
   Vibrate,
-  MapPin,
   ChevronRight,
   Activity,
   Footprints,
   Flame,
   Droplets,
-  Play,
+  TrendingUp,
+  Gamepad2,
+  Languages,
+  MessageSquare,
+  Mic,
+  FileText,
+  Sliders,
   Timer,
-  TrendingUp
+  X,
+  Check,
+  Clock,
+  Grid3X3,
+  Wallet,
+  CreditCard,
+  Settings
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
 import { BottomNav } from "@/components/bottom-nav"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 
 const deviceData: Record<string, {
   name: string
@@ -71,6 +88,16 @@ const icons = {
   scale: Scale,
 }
 
+// EQ预设配置
+const eqPresets = [
+  { id: "standard", name: "标准", values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  { id: "bass", name: "低音增强", values: [6, 5, 4, 2, 0, 0, 0, 0, 0, 0] },
+  { id: "vocal", name: "人声增强", values: [0, 0, 2, 4, 5, 5, 4, 2, 0, 0] },
+  { id: "treble", name: "高音增强", values: [0, 0, 0, 0, 0, 2, 4, 5, 6, 6] },
+]
+
+const eqFrequencies = ["31", "62", "125", "250", "500", "1K", "2K", "4K", "8K", "16K"]
+
 // 运动类型数据
 const sportTypes = [
   { id: "outdoor-run", name: "户外跑步", icon: Activity, color: "bg-green-500" },
@@ -103,11 +130,106 @@ export default function DeviceDetailPage() {
   const device = deviceData[deviceId] || deviceData["1"]
   const DeviceIcon = icons[device.type]
 
+  // 手表相关状态
   const [notifications, setNotifications] = useState(true)
   const [heartMonitor, setHeartMonitor] = useState(true)
   const [sleepTracking, setSleepTracking] = useState(true)
   const [vibration, setVibration] = useState(true)
   const [activeTab, setActiveTab] = useState<"overview" | "sports" | "health">("overview")
+
+  // 耳机相关状态
+  const [gameMode, setGameMode] = useState(false)
+  const [selectedEqPreset, setSelectedEqPreset] = useState("standard")
+  const [customEqValues, setCustomEqValues] = useState([0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+  const [customPresets, setCustomPresets] = useState<{id: string, name: string, values: number[]}[]>([])
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [newPresetName, setNewPresetName] = useState("")
+
+  // 定时停止播放状态
+  const [showSleepTimerDialog, setShowSleepTimerDialog] = useState(false)
+  const [sleepTimerMode, setSleepTimerMode] = useState<"countdown" | "clock">("countdown")
+  const [countdownMinutes, setCountdownMinutes] = useState(30)
+  const [clockTime, setClockTime] = useState("")
+  const [sleepTimerActive, setSleepTimerActive] = useState(false)
+  const [sleepTimerRemaining, setSleepTimerRemaining] = useState(0)
+  const sleepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // 快捷倒计时选项
+  const countdownOptions = [15, 20, 30, 45, 60, 90]
+
+  // 获取当前EQ值
+  const getCurrentEqValues = () => {
+    if (selectedEqPreset === "custom") {
+      return customEqValues
+    }
+    const preset = [...eqPresets, ...customPresets].find(p => p.id === selectedEqPreset)
+    return preset?.values || [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  }
+
+  // 保存自定义预设
+  const saveCustomPreset = () => {
+    if (newPresetName.trim()) {
+      const newPreset = {
+        id: `custom-${Date.now()}`,
+        name: newPresetName.trim(),
+        values: [...customEqValues]
+      }
+      setCustomPresets([...customPresets, newPreset])
+      setSelectedEqPreset(newPreset.id)
+      setNewPresetName("")
+      setShowSaveDialog(false)
+    }
+  }
+
+  // 激活定时停止
+  const activateSleepTimer = () => {
+    if (sleepTimerRef.current) clearInterval(sleepTimerRef.current)
+    let seconds = 0
+    if (sleepTimerMode === "countdown") {
+      seconds = countdownMinutes * 60
+    } else {
+      const [h, m] = clockTime.split(":").map(Number)
+      const now = new Date()
+      const target = new Date()
+      target.setHours(h, m, 0, 0)
+      if (target <= now) target.setDate(target.getDate() + 1)
+      seconds = Math.floor((target.getTime() - now.getTime()) / 1000)
+    }
+    setSleepTimerRemaining(seconds)
+    setSleepTimerActive(true)
+    setShowSleepTimerDialog(false)
+    sleepTimerRef.current = setInterval(() => {
+      setSleepTimerRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(sleepTimerRef.current!)
+          setSleepTimerActive(false)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+  }
+
+  const cancelSleepTimer = () => {
+    if (sleepTimerRef.current) clearInterval(sleepTimerRef.current)
+    setSleepTimerActive(false)
+    setSleepTimerRemaining(0)
+  }
+
+  // 格式化剩余时间
+  const formatRemaining = (s: number) => {
+    const h = Math.floor(s / 3600)
+    const m = Math.floor((s % 3600) / 60)
+    const sec = s % 60
+    if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
+    return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`
+  }
+
+  useEffect(() => {
+    return () => {
+      if (sleepTimerRef.current) clearInterval(sleepTimerRef.current)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -120,9 +242,6 @@ export default function DeviceDetailPage() {
             </Button>
             <h1 className="text-xl font-bold text-foreground">{device.name}</h1>
           </div>
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <Settings className="h-5 w-5" />
-          </Button>
         </div>
         
         {/* Tab Switcher for Watch */}
@@ -194,146 +313,362 @@ export default function DeviceDetailPage() {
                       />
                     </div>
                   </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 mt-6">
-                    <Button variant="outline" className="gap-2">
-                      <RefreshCw className="h-4 w-4" />
-                      同步数据
-                    </Button>
-                    <Button variant="outline" className="gap-2">
-                      <MapPin className="h-4 w-4" />
-                      查找设备
-                    </Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Quick Controls for Watch */}
             {device.type === "watch" && (
-              <section>
-                <h3 className="font-semibold text-foreground mb-3">快捷控制</h3>
-                <div className="grid grid-cols-4 gap-3">
-                  {[
-                    { icon: Bell, label: "查找手机", active: false },
-                    { icon: Music, label: "音乐控制", active: true },
-                    { icon: Phone, label: "来电提醒", active: true },
-                    { icon: Vibrate, label: "勿扰模式", active: false },
-                  ].map((control) => (
-                    <button
-                      key={control.label}
-                      className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-colors ${
-                        control.active 
-                          ? "bg-primary text-primary-foreground" 
-                          : "bg-card text-card-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      <control.icon className="h-5 w-5" />
-                      <span className="text-xs">{control.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
+              <>
+                <section>
+                  <h3 className="font-semibold text-foreground mb-3">快捷控制</h3>
+                  <div className="grid grid-cols-4 gap-3">
+                    {[
+                      { icon: Bell, label: "查找手机", active: false },
+                      { icon: Music, label: "音乐控制", active: true },
+                      { icon: Phone, label: "来电提醒", active: true },
+                      { icon: Vibrate, label: "勿扰模式", active: false },
+                    ].map((control) => (
+                      <button
+                        key={control.label}
+                        className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-colors ${
+                          control.active 
+                            ? "bg-primary text-primary-foreground" 
+                            : "bg-card text-card-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        <control.icon className="h-5 w-5" />
+                        <span className="text-xs">{control.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                {/* Watch Features */}
+                <section>
+                  <h3 className="font-semibold text-foreground mb-3">手表功能</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link href={`/devices/${deviceId}/watch-faces`}>
+                      <Card className="border-0 shadow-sm hover:shadow-md transition-all h-full">
+                        <CardContent className="p-4 flex items-center gap-3">
+                          <div className="p-2.5 rounded-xl bg-blue-500/10">
+                            <Clock className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-card-foreground">表盘市场</p>
+                            <p className="text-xs text-muted-foreground">个性化表盘</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    <Link href={`/devices/${deviceId}/apps`}>
+                      <Card className="border-0 shadow-sm hover:shadow-md transition-all h-full">
+                        <CardContent className="p-4 flex items-center gap-3">
+                          <div className="p-2.5 rounded-xl bg-purple-500/10">
+                            <Grid3X3 className="h-5 w-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-card-foreground">应用管理</p>
+                            <p className="text-xs text-muted-foreground">安装与卸载</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    <Link href={`/devices/${deviceId}/payment`}>
+                      <Card className="border-0 shadow-sm hover:shadow-md transition-all h-full">
+                        <CardContent className="p-4 flex items-center gap-3">
+                          <div className="p-2.5 rounded-xl bg-green-500/10">
+                            <Wallet className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-card-foreground">钱包支付</p>
+                            <p className="text-xs text-muted-foreground">NFC支付</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    <Link href={`/devices/${deviceId}/cards`}>
+                      <Card className="border-0 shadow-sm hover:shadow-md transition-all h-full">
+                        <CardContent className="p-4 flex items-center gap-3">
+                          <div className="p-2.5 rounded-xl bg-orange-500/10">
+                            <CreditCard className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-card-foreground">卡片管理</p>
+                            <p className="text-xs text-muted-foreground">门禁/交通卡</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  </div>
+                </section>
+              </>
             )}
 
             {/* Quick Controls for Earbuds */}
             {device.type === "earbuds" && (
-              <section>
-                <h3 className="font-semibold text-foreground mb-3">快捷控制</h3>
-                <div className="grid grid-cols-3 gap-3">
-                  {[
-                    { icon: Volume2, label: "降噪", active: true },
-                    { icon: VolumeX, label: "通透", active: false },
-                    { icon: Music, label: "均衡器", active: false },
-                  ].map((control) => (
-                    <button
-                      key={control.label}
-                      className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-colors ${
-                        control.active 
-                          ? "bg-primary text-primary-foreground" 
-                          : "bg-card text-card-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      <control.icon className="h-6 w-6" />
-                      <span className="text-sm font-medium">{control.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
+              <>
+                {/* Equalizer */}
+                <section>
+                  <h3 className="font-semibold text-foreground mb-3">均衡器</h3>
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-4 space-y-4">
+                      {/* Preset Selector */}
+                      <div className="flex flex-wrap gap-2">
+                        {[...eqPresets, ...customPresets, { id: "custom", name: "自定义", values: customEqValues }].map((preset) => (
+                          <button
+                            key={preset.id}
+                            onClick={() => setSelectedEqPreset(preset.id)}
+                            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                              selectedEqPreset === preset.id
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                            }`}
+                          >
+                            {preset.name}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* EQ Sliders */}
+                      <div className="flex gap-2 pt-4">
+                        {eqFrequencies.map((freq, index) => {
+                          const values = getCurrentEqValues()
+                          const isCustom = selectedEqPreset === "custom"
+                          return (
+                            <div key={freq} className="flex-1 flex flex-col items-center gap-2">
+                              <div className="h-32 flex items-center justify-center">
+                                <Slider
+                                  orientation="vertical"
+                                  value={[values[index]]}
+                                  min={-6}
+                                  max={6}
+                                  step={1}
+                                  disabled={!isCustom}
+                                  onValueChange={(val) => {
+                                    if (isCustom) {
+                                      const newValues = [...customEqValues]
+                                      newValues[index] = val[0]
+                                      setCustomEqValues(newValues)
+                                    }
+                                  }}
+                                  className={`h-full ${!isCustom ? "opacity-60" : ""}`}
+                                />
+                              </div>
+                              <span className="text-xs text-muted-foreground">{freq}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+
+                      {/* Save Custom Button */}
+                      {selectedEqPreset === "custom" && (
+                        <Button 
+                          variant="outline" 
+                          className="w-full mt-2"
+                          onClick={() => setShowSaveDialog(true)}
+                        >
+                          保存为预设
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                </section>
+
+                {/* Sleep Timer */}
+                <section>
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-xl ${sleepTimerActive ? "bg-primary/20" : "bg-secondary"}`}>
+                            <Timer className={`h-5 w-5 ${sleepTimerActive ? "text-primary" : "text-secondary-foreground"}`} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-card-foreground">定时停止播放</p>
+                            {sleepTimerActive ? (
+                              <p className="text-xs text-primary font-medium">{formatRemaining(sleepTimerRemaining)} 后停止</p>
+                            ) : (
+                              <p className="text-xs text-muted-foreground">到时间自动停止音乐</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {sleepTimerActive ? (
+                            <button
+                              onClick={cancelSleepTimer}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-sm font-medium"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              取消
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setShowSleepTimerDialog(true)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium"
+                            >
+                              设置
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </section>
+
+                {/* Game Mode */}
+                <section>
+                  <Card className="border-0 shadow-sm">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2.5 rounded-xl ${gameMode ? "bg-primary/20" : "bg-secondary"}`}>
+                            <Gamepad2 className={`h-5 w-5 ${gameMode ? "text-primary" : "text-secondary-foreground"}`} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-card-foreground">游戏模式</p>
+                            <p className="text-xs text-muted-foreground">低延迟音频传输</p>
+                          </div>
+                        </div>
+                        <Switch checked={gameMode} onCheckedChange={setGameMode} />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </section>
+
+                {/* Translation & Summary Module */}
+                <section>
+                  <h3 className="font-semibold text-foreground mb-3">翻译 & 总结</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Link href={`/devices/${deviceId}/translate/face-to-face`}>
+                      <Card className="border-0 shadow-sm hover:shadow-md transition-all h-full">
+                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
+                          <div className="p-3 rounded-2xl bg-blue-500/10">
+                            <MessageSquare className="h-6 w-6 text-blue-600" />
+                          </div>
+                          <p className="font-medium text-card-foreground">面对面翻译</p>
+                          <p className="text-xs text-muted-foreground">实时对话翻译</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    <Link href={`/devices/${deviceId}/translate/call`}>
+                      <Card className="border-0 shadow-sm hover:shadow-md transition-all h-full">
+                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
+                          <div className="p-3 rounded-2xl bg-green-500/10">
+                            <Phone className="h-6 w-6 text-green-600" />
+                          </div>
+                          <p className="font-medium text-card-foreground">通话翻译</p>
+                          <p className="text-xs text-muted-foreground">电话实时翻译</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    <Link href={`/devices/${deviceId}/translate/simultaneous`}>
+                      <Card className="border-0 shadow-sm hover:shadow-md transition-all h-full">
+                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
+                          <div className="p-3 rounded-2xl bg-purple-500/10">
+                            <Languages className="h-6 w-6 text-purple-600" />
+                          </div>
+                          <p className="font-medium text-card-foreground">同声传译</p>
+                          <p className="text-xs text-muted-foreground">会议同步翻译</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                    <Link href={`/devices/${deviceId}/translate/summary`}>
+                      <Card className="border-0 shadow-sm hover:shadow-md transition-all h-full">
+                        <CardContent className="p-4 flex flex-col items-center text-center gap-2">
+                          <div className="p-3 rounded-2xl bg-orange-500/10">
+                            <FileText className="h-6 w-6 text-orange-600" />
+                          </div>
+                          <p className="font-medium text-card-foreground">AI 总结</p>
+                          <p className="text-xs text-muted-foreground">智能会议纪要</p>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  </div>
+                </section>
+
+                {/* Advanced Settings */}
+                <section>
+                  <Link href={`/devices/${deviceId}/settings`}>
+                    <Card className="border-0 shadow-sm hover:shadow-md transition-all">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2.5 rounded-xl bg-secondary">
+                              <Settings className="h-5 w-5 text-secondary-foreground" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-card-foreground">高级设置</p>
+                              <p className="text-xs text-muted-foreground">手势、音频、固件更新</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </section>
+              </>
             )}
 
-            {/* Settings */}
-            <section>
-              <h3 className="font-semibold text-foreground mb-3">设备设置</h3>
-              <Card className="border-0 shadow-sm">
-                <CardContent className="p-0 divide-y divide-border">
-                  {device.type === "watch" && (
-                    <>
-                      <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-xl bg-primary/10">
-                            <Bell className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-card-foreground">消息通知</p>
-                            <p className="text-xs text-muted-foreground">接收手机通知推送</p>
-                          </div>
+            {/* Watch Settings */}
+            {device.type === "watch" && (
+              <section>
+                <h3 className="font-semibold text-foreground mb-3">设备设置</h3>
+                <Card className="border-0 shadow-sm">
+                  <CardContent className="p-0 divide-y divide-border">
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-primary/10">
+                          <Bell className="h-4 w-4 text-primary" />
                         </div>
-                        <Switch checked={notifications} onCheckedChange={setNotifications} />
-                      </div>
-                      <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-xl bg-destructive/10">
-                            <Heart className="h-4 w-4 text-destructive" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-card-foreground">心率监测</p>
-                            <p className="text-xs text-muted-foreground">自动监测心率变化</p>
-                          </div>
+                        <div>
+                          <p className="font-medium text-card-foreground">消息通知</p>
+                          <p className="text-xs text-muted-foreground">接收手机通知推送</p>
                         </div>
-                        <Switch checked={heartMonitor} onCheckedChange={setHeartMonitor} />
                       </div>
-                      <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-xl bg-chart-4/10">
-                            <Moon className="h-4 w-4 text-chart-4" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-card-foreground">睡眠追踪</p>
-                            <p className="text-xs text-muted-foreground">记录睡眠质量和时长</p>
-                          </div>
-                        </div>
-                        <Switch checked={sleepTracking} onCheckedChange={setSleepTracking} />
-                      </div>
-                      <div className="flex items-center justify-between p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-xl bg-secondary">
-                            <Vibrate className="h-4 w-4 text-secondary-foreground" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-card-foreground">振动反馈</p>
-                            <p className="text-xs text-muted-foreground">通知时振动提醒</p>
-                          </div>
-                        </div>
-                        <Switch checked={vibration} onCheckedChange={setVibration} />
-                      </div>
-                    </>
-                  )}
-                  
-                  {/* Common Settings */}
-                  <button className="w-full flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-xl bg-secondary">
-                        <Settings className="h-4 w-4 text-secondary-foreground" />
-                      </div>
-                      <p className="font-medium text-card-foreground">高级设置</p>
+                      <Switch checked={notifications} onCheckedChange={setNotifications} />
                     </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                </CardContent>
-              </Card>
-            </section>
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-destructive/10">
+                          <Heart className="h-4 w-4 text-destructive" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-card-foreground">心率监测</p>
+                          <p className="text-xs text-muted-foreground">自动监测心率变化</p>
+                        </div>
+                      </div>
+                      <Switch checked={heartMonitor} onCheckedChange={setHeartMonitor} />
+                    </div>
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-chart-4/10">
+                          <Moon className="h-4 w-4 text-chart-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-card-foreground">睡眠追踪</p>
+                          <p className="text-xs text-muted-foreground">记录睡眠质量和时长</p>
+                        </div>
+                      </div>
+                      <Switch checked={sleepTracking} onCheckedChange={setSleepTracking} />
+                    </div>
+                    <div className="flex items-center justify-between p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-xl bg-secondary">
+                          <Vibrate className="h-4 w-4 text-secondary-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-card-foreground">振动反馈</p>
+                          <p className="text-xs text-muted-foreground">通知时振动提醒</p>
+                        </div>
+                      </div>
+                      <Switch checked={vibration} onCheckedChange={setVibration} />
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+            )}
 
             {/* Device Info */}
             <section>
@@ -371,13 +706,13 @@ export default function DeviceDetailPage() {
             <section>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-foreground">开始运动</h3>
-                <Link href="/devices/1/sports" className="text-sm text-primary font-medium flex items-center gap-1">
+                <Link href={`/devices/${deviceId}/sports`} className="text-sm text-primary font-medium flex items-center gap-1">
                   全部 <ChevronRight className="h-4 w-4" />
                 </Link>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {sportTypes.slice(0, 6).map((sport) => (
-                  <Link key={sport.id} href={`/devices/1/sports/${sport.id}`}>
+                  <Link key={sport.id} href={`/devices/${deviceId}/sports/${sport.id}`}>
                     <Card className="border-0 shadow-sm hover:shadow-md transition-all">
                       <CardContent className="p-4 flex flex-col items-center">
                         <div className={`p-3 rounded-2xl ${sport.color}/10 mb-2`}>
@@ -438,7 +773,7 @@ export default function DeviceDetailPage() {
             <section>
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-foreground">运动记录</h3>
-                <Link href="/devices/1/sports/history" className="text-sm text-primary font-medium flex items-center gap-1">
+                <Link href={`/devices/${deviceId}/sports/history`} className="text-sm text-primary font-medium flex items-center gap-1">
                   全部 <ChevronRight className="h-4 w-4" />
                 </Link>
               </div>
@@ -541,7 +876,7 @@ export default function DeviceDetailPage() {
                   ].map((metric) => (
                     <Link 
                       key={metric.label} 
-                      href={`/devices/1/health/${metric.label.toLowerCase()}`}
+                      href={`/devices/${deviceId}/health/${metric.label.toLowerCase()}`}
                       className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
@@ -585,6 +920,154 @@ export default function DeviceDetailPage() {
           </>
         )}
       </main>
+
+      {/* Save Preset Dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>保存自定义预设</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Input
+              placeholder="请输入预设名称"
+              value={newPresetName}
+              onChange={(e) => setNewPresetName(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+              取消
+            </Button>
+            <Button onClick={saveCustomPreset}>
+              保存
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sleep Timer Dialog */}
+      <Dialog open={showSleepTimerDialog} onOpenChange={setShowSleepTimerDialog}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>定时停止播放</DialogTitle>
+          </DialogHeader>
+          <div className="py-2 space-y-5">
+            {/* Mode Toggle */}
+            <div className="flex rounded-xl bg-secondary p-1 gap-1">
+              <button
+                onClick={() => setSleepTimerMode("countdown")}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  sleepTimerMode === "countdown"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground"
+                }`}
+              >
+                倒计时
+              </button>
+              <button
+                onClick={() => setSleepTimerMode("clock")}
+                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  sleepTimerMode === "clock"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground"
+                }`}
+              >
+                指定时间点
+              </button>
+            </div>
+
+            {/* Countdown Mode */}
+            {sleepTimerMode === "countdown" && (
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  {countdownOptions.map((min) => (
+                    <button
+                      key={min}
+                      onClick={() => setCountdownMinutes(min)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                        countdownMinutes === min
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {min >= 60 ? `${min / 60}小时` : `${min}分钟`}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 flex items-center gap-2 bg-secondary rounded-xl px-4 py-3">
+                    <button
+                      onClick={() => setCountdownMinutes(Math.max(1, countdownMinutes - 5))}
+                      className="w-7 h-7 rounded-full bg-background flex items-center justify-center text-foreground font-bold shadow-sm"
+                    >
+                      -
+                    </button>
+                    <span className="flex-1 text-center text-lg font-bold text-foreground">
+                      {countdownMinutes} 分钟
+                    </span>
+                    <button
+                      onClick={() => setCountdownMinutes(Math.min(180, countdownMinutes + 5))}
+                      className="w-7 h-7 rounded-full bg-background flex items-center justify-center text-foreground font-bold shadow-sm"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">
+                  将在 <span className="text-foreground font-medium">{countdownMinutes} 分钟</span>后停止播放
+                </p>
+              </div>
+            )}
+
+            {/* Clock Mode */}
+            {sleepTimerMode === "clock" && (
+              <div className="space-y-3">
+                <div className="flex flex-col items-center gap-3">
+                  <Input
+                    type="time"
+                    value={clockTime}
+                    onChange={(e) => setClockTime(e.target.value)}
+                    className="text-center text-2xl font-bold h-14 rounded-xl"
+                  />
+                  {clockTime && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      将在 <span className="text-foreground font-medium">{clockTime}</span> 停止播放
+                    </p>
+                  )}
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {["22:00", "22:30", "23:00", "23:30", "00:00", "00:30"].map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setClockTime(t)}
+                      className={`py-2 rounded-xl text-sm font-medium transition-colors ${
+                        clockTime === t
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                      }`}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setShowSleepTimerDialog(false)}>
+              取消
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={activateSleepTimer}
+              disabled={sleepTimerMode === "clock" && !clockTime}
+            >
+              <Check className="h-4 w-4 mr-1.5" />
+              开始计时
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <BottomNav />
     </div>
