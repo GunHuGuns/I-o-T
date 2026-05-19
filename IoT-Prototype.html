@@ -1,0 +1,2370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IoT 设备管理系统 - 交互原型</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary: #3b82f6;
+            --primary-light: #60a5fa;
+            --primary-dark: #2563eb;
+            --secondary: #f3f4f6;
+            --background: #f9fafb;
+            --card: #ffffff;
+            --foreground: #111827;
+            --muted: #6b7280;
+            --border: #e5e7eb;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --radius: 12px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--background);
+            color: var(--foreground);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* App Container - Mobile Frame */
+        .app-frame {
+            max-width: 430px;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: var(--background);
+            position: relative;
+            box-shadow: 0 0 40px rgba(0,0,0,0.1);
+        }
+
+        /* Pages */
+        .page {
+            display: none;
+            min-height: 100vh;
+            padding-bottom: 80px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            background: var(--card);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: var(--secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: var(--border);
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Content */
+        .content {
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--foreground);
+        }
+
+        /* Cards */
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.2s;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .card-clickable {
+            cursor: pointer;
+        }
+
+        .card-clickable:active {
+            transform: scale(0.98);
+        }
+
+        /* Device Card */
+        .device-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .device-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+        }
+
+        .device-icon.earbuds { background: linear-gradient(135deg, #3b82f6, #8b5cf6); }
+        .device-icon.watch { background: linear-gradient(135deg, #10b981, #14b8a6); }
+
+        .device-info {
+            flex: 1;
+        }
+
+        .device-name {
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .device-status {
+            font-size: 13px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .battery {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .battery-bar {
+            width: 24px;
+            height: 12px;
+            border: 2px solid var(--foreground);
+            border-radius: 3px;
+            position: relative;
+        }
+
+        .battery-bar::after {
+            content: '';
+            position: absolute;
+            right: -5px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 6px;
+            background: var(--foreground);
+            border-radius: 0 2px 2px 0;
+        }
+
+        .battery-level {
+            height: 100%;
+            background: var(--success);
+            border-radius: 1px;
+        }
+
+        /* Grid */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        /* Quick Control Button */
+        .quick-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 8px;
+            border-radius: var(--radius);
+            border: none;
+            background: var(--secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quick-btn:active {
+            transform: scale(0.95);
+        }
+
+        .quick-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .quick-btn-icon {
+            font-size: 22px;
+        }
+
+        .quick-btn-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Feature Card */
+        .feature-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px;
+            background: var(--card);
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .feature-card:active {
+            transform: scale(0.98);
+        }
+
+        .feature-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .feature-icon.blue { background: rgba(59, 130, 246, 0.1); }
+        .feature-icon.green { background: rgba(16, 185, 129, 0.1); }
+        .feature-icon.purple { background: rgba(139, 92, 246, 0.1); }
+        .feature-icon.orange { background: rgba(245, 158, 11, 0.1); }
+
+        .feature-info {
+            flex: 1;
+        }
+
+        .feature-name {
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .feature-desc {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .chevron {
+            color: var(--muted);
+        }
+
+        /* Switch */
+        .switch-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+        }
+
+        .switch-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .switch-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .switch-text h4 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .switch-text p {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .switch {
+            width: 52px;
+            height: 32px;
+            border-radius: 16px;
+            background: var(--border);
+            border: none;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s;
+        }
+
+        .switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .switch.on {
+            background: var(--primary);
+        }
+
+        .switch.on::after {
+            left: 23px;
+        }
+
+        /* Equalizer */
+        .eq-presets {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .eq-preset {
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .eq-preset.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .eq-sliders {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            height: 180px;
+            padding: 20px 10px;
+            background: var(--secondary);
+            border-radius: var(--radius);
+        }
+
+        .eq-slider-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .eq-slider {
+            width: 6px;
+            height: 120px;
+            background: var(--border);
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .eq-slider-fill {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: var(--primary);
+            border-radius: 3px;
+            transition: height 0.2s;
+        }
+
+        .eq-slider-thumb {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: var(--primary);
+            border-radius: 50%;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+            cursor: grab;
+        }
+
+        .eq-slider-label {
+            font-size: 10px;
+            color: var(--muted);
+        }
+
+        /* Timer */
+        .timer-display {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: var(--radius);
+            color: white;
+            margin-bottom: 16px;
+        }
+
+        .timer-time {
+            font-size: 48px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+
+        .timer-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .timer-preset {
+            padding: 10px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .timer-preset.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Translate Module */
+        .translate-card {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .translate-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .translate-status {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .translate-hint {
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 24px;
+        }
+
+        .translate-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary);
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+            transition: all 0.2s;
+        }
+
+        .translate-btn:active {
+            transform: scale(0.95);
+        }
+
+        .translate-btn.recording {
+            background: var(--danger);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 0 0 20px rgba(239, 68, 68, 0); }
+        }
+
+        .lang-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .lang-btn {
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .lang-swap {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: var(--secondary);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: var(--secondary);
+            border-radius: var(--radius);
+            padding: 4px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: var(--card);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Gesture Setting */
+        .gesture-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .gesture-item:last-child {
+            border-bottom: none;
+        }
+
+        .gesture-label {
+            font-size: 14px;
+            color: var(--foreground);
+        }
+
+        .gesture-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 430px;
+            background: var(--card);
+            border-top: 1px solid var(--border);
+            display: flex;
+            padding: 8px 0;
+            padding-bottom: max(8px, env(safe-area-inset-bottom));
+            z-index: 1000;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            color: var(--muted);
+            transition: all 0.2s;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .nav-label {
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Profile */
+        .profile-header {
+            text-align: center;
+            padding: 24px 20px;
+        }
+
+        .avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            color: white;
+            margin: 0 auto 12px;
+        }
+
+        .profile-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .profile-id {
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px;
+            background: var(--card);
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .menu-item:active {
+            transform: scale(0.98);
+        }
+
+        .menu-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .menu-icon.blue { background: rgba(59, 130, 246, 0.1); }
+        .menu-icon.green { background: rgba(16, 185, 129, 0.1); }
+        .menu-icon.purple { background: rgba(139, 92, 246, 0.1); }
+        .menu-icon.orange { background: rgba(245, 158, 11, 0.1); }
+        .menu-icon.red { background: rgba(239, 68, 68, 0.1); }
+
+        .menu-text {
+            flex: 1;
+        }
+
+        .menu-title {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .menu-desc {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* Watch Faces Grid */
+        .watch-faces-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .watch-face {
+            aspect-ratio: 1;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .watch-face:active {
+            transform: scale(0.95);
+        }
+
+        .watch-face.selected {
+            box-shadow: 0 0 0 3px var(--primary);
+        }
+
+        .watch-face-time {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--card);
+            width: 100%;
+            max-width: 430px;
+            border-radius: 20px 20px 0 0;
+            padding: 20px;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--secondary);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        /* Button */
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border-radius: var(--radius);
+            border: none;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:active {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: var(--foreground);
+        }
+
+        /* Health Stats */
+        .health-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .health-stat {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .health-stat-icon {
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+
+        .health-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .health-stat-label {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            z-index: 3000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        /* Selection list */
+        .selection-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .selection-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .selection-item:last-child {
+            border-bottom: none;
+        }
+
+        .selection-item.selected {
+            color: var(--primary);
+        }
+
+        .check-icon {
+            color: var(--primary);
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-frame">
+        <!-- ==================== 首页 ==================== -->
+        <div id="page-home" class="page active">
+            <div class="header">
+                <div class="header-left">
+                    <span class="header-title">IoT 智能设备</span>
+                </div>
+                <span style="font-size: 24px;">🔔</span>
+            </div>
+            <div class="content">
+                <div class="section">
+                    <div class="section-title">已连接设备</div>
+                    <div class="card card-clickable" onclick="goToPage('page-earbuds')">
+                        <div class="device-card">
+                            <div class="device-icon earbuds">🎧</div>
+                            <div class="device-info">
+                                <div class="device-name">Pro Buds 3</div>
+                                <div class="device-status">
+                                    <span class="status-dot"></span>
+                                    已连接
+                                </div>
+                            </div>
+                            <div class="battery">
+                                <div class="battery-bar">
+                                    <div class="battery-level" style="width: 85%"></div>
+                                </div>
+                                85%
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card card-clickable" onclick="goToPage('page-watch')">
+                        <div class="device-card">
+                            <div class="device-icon watch">⌚</div>
+                            <div class="device-info">
+                                <div class="device-name">Smart Watch 5</div>
+                                <div class="device-status">
+                                    <span class="status-dot"></span>
+                                    已连接
+                                </div>
+                            </div>
+                            <div class="battery">
+                                <div class="battery-bar">
+                                    <div class="battery-level" style="width: 62%"></div>
+                                </div>
+                                62%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">今日健康</div>
+                    <div class="health-stats">
+                        <div class="health-stat">
+                            <div class="health-stat-icon">👣</div>
+                            <div class="health-stat-value">8,542</div>
+                            <div class="health-stat-label">步数</div>
+                        </div>
+                        <div class="health-stat">
+                            <div class="health-stat-icon">🔥</div>
+                            <div class="health-stat-value">356</div>
+                            <div class="health-stat-label">卡路里</div>
+                        </div>
+                        <div class="health-stat">
+                            <div class="health-stat-icon">❤️</div>
+                            <div class="health-stat-value">72</div>
+                            <div class="health-stat-label">心率</div>
+                        </div>
+                        <div class="health-stat">
+                            <div class="health-stat-icon">😴</div>
+                            <div class="health-stat-value">7.5h</div>
+                            <div class="health-stat-label">睡眠</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 耳机详情页 ==================== -->
+        <div id="page-earbuds" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-home')">←</button>
+                    <span class="header-title">Pro Buds 3</span>
+                </div>
+            </div>
+            <div class="content">
+                <!-- 设备状态 -->
+                <div class="card" style="text-align: center; padding: 24px;">
+                    <div style="font-size: 64px; margin-bottom: 12px;">🎧</div>
+                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">已连接</div>
+                    <div style="display: flex; justify-content: center; gap: 24px; color: var(--muted); font-size: 14px;">
+                        <span>左耳 85%</span>
+                        <span>右耳 82%</span>
+                        <span>充电盒 90%</span>
+                    </div>
+                </div>
+
+                <!-- 游戏模式 -->
+                <div class="card">
+                    <div class="switch-row">
+                        <div class="switch-label">
+                            <div class="switch-icon" style="background: rgba(139, 92, 246, 0.1);">🎮</div>
+                            <div class="switch-text">
+                                <h4>游戏模式</h4>
+                                <p>低延迟音频</p>
+                            </div>
+                        </div>
+                        <button class="switch" id="gameMode" onclick="toggleSwitch('gameMode')"></button>
+                    </div>
+                </div>
+
+                <!-- 均衡器 -->
+                <div class="section">
+                    <div class="section-title">均衡器</div>
+                    <div class="card">
+                        <div class="eq-presets">
+                            <button class="eq-preset active" onclick="selectEqPreset(this, false)">标准</button>
+                            <button class="eq-preset" onclick="selectEqPreset(this, false)">低音增强</button>
+                            <button class="eq-preset" onclick="selectEqPreset(this, false)">人声增强</button>
+                            <button class="eq-preset" onclick="selectEqPreset(this, false)">高音增强</button>
+                            <button class="eq-preset" onclick="selectEqPreset(this, true)">自定义</button>
+                        </div>
+                        <div class="eq-sliders" id="eqSliders">
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="50"><div class="eq-slider-fill" style="height: 50%"></div><div class="eq-slider-thumb" style="bottom: calc(50% - 8px)"></div></div>
+                                <span class="eq-slider-label">31</span>
+                            </div>
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="60"><div class="eq-slider-fill" style="height: 60%"></div><div class="eq-slider-thumb" style="bottom: calc(60% - 8px)"></div></div>
+                                <span class="eq-slider-label">62</span>
+                            </div>
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="55"><div class="eq-slider-fill" style="height: 55%"></div><div class="eq-slider-thumb" style="bottom: calc(55% - 8px)"></div></div>
+                                <span class="eq-slider-label">125</span>
+                            </div>
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="50"><div class="eq-slider-fill" style="height: 50%"></div><div class="eq-slider-thumb" style="bottom: calc(50% - 8px)"></div></div>
+                                <span class="eq-slider-label">250</span>
+                            </div>
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="45"><div class="eq-slider-fill" style="height: 45%"></div><div class="eq-slider-thumb" style="bottom: calc(45% - 8px)"></div></div>
+                                <span class="eq-slider-label">500</span>
+                            </div>
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="50"><div class="eq-slider-fill" style="height: 50%"></div><div class="eq-slider-thumb" style="bottom: calc(50% - 8px)"></div></div>
+                                <span class="eq-slider-label">1K</span>
+                            </div>
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="55"><div class="eq-slider-fill" style="height: 55%"></div><div class="eq-slider-thumb" style="bottom: calc(55% - 8px)"></div></div>
+                                <span class="eq-slider-label">2K</span>
+                            </div>
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="60"><div class="eq-slider-fill" style="height: 60%"></div><div class="eq-slider-thumb" style="bottom: calc(60% - 8px)"></div></div>
+                                <span class="eq-slider-label">4K</span>
+                            </div>
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="55"><div class="eq-slider-fill" style="height: 55%"></div><div class="eq-slider-thumb" style="bottom: calc(55% - 8px)"></div></div>
+                                <span class="eq-slider-label">8K</span>
+                            </div>
+                            <div class="eq-slider-container">
+                                <div class="eq-slider" data-value="50"><div class="eq-slider-fill" style="height: 50%"></div><div class="eq-slider-thumb" style="bottom: calc(50% - 8px)"></div></div>
+                                <span class="eq-slider-label">16K</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" style="margin-top: 16px; display: none;" id="saveEqBtn" onclick="showToast('预设已保存')">保存自定义预设</button>
+                    </div>
+                </div>
+
+                <!-- 定时停止 -->
+                <div class="section">
+                    <div class="section-title">定时停止播放</div>
+                    <div class="card card-clickable" onclick="goToPage('page-timer')">
+                        <div class="switch-row" style="padding: 4px 0;">
+                            <div class="switch-label">
+                                <div class="switch-icon" style="background: rgba(245, 158, 11, 0.1);">⏰</div>
+                                <div class="switch-text">
+                                    <h4>定时停止</h4>
+                                    <p id="timerStatus">未设置</p>
+                                </div>
+                            </div>
+                            <span class="chevron">›</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 翻译和总结 -->
+                <div class="section">
+                    <div class="section-title">翻译 & 总结</div>
+                    <div class="grid-2">
+                        <div class="feature-card" onclick="goToPage('page-translate-face')">
+                            <div class="feature-icon blue">🗣️</div>
+                            <div class="feature-info">
+                                <div class="feature-name">面对面翻译</div>
+                                <div class="feature-desc">实时对话</div>
+                            </div>
+                        </div>
+                        <div class="feature-card" onclick="goToPage('page-translate-call')">
+                            <div class="feature-icon green">📞</div>
+                            <div class="feature-info">
+                                <div class="feature-name">通话翻译</div>
+                                <div class="feature-desc">来电翻译</div>
+                            </div>
+                        </div>
+                        <div class="feature-card" onclick="goToPage('page-translate-sim')">
+                            <div class="feature-icon purple">🎙️</div>
+                            <div class="feature-info">
+                                <div class="feature-name">同声传译</div>
+                                <div class="feature-desc">会议演讲</div>
+                            </div>
+                        </div>
+                        <div class="feature-card" onclick="goToPage('page-summary')">
+                            <div class="feature-icon orange">📝</div>
+                            <div class="feature-info">
+                                <div class="feature-name">AI 总结</div>
+                                <div class="feature-desc">智能摘要</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 高级设置 -->
+                <div class="section">
+                    <div class="card card-clickable" onclick="goToPage('page-settings')">
+                        <div class="switch-row" style="padding: 4px 0;">
+                            <div class="switch-label">
+                                <div class="switch-icon" style="background: rgba(107, 114, 128, 0.1);">⚙️</div>
+                                <div class="switch-text">
+                                    <h4>高级设置</h4>
+                                    <p>手势、音频、固件</p>
+                                </div>
+                            </div>
+                            <span class="chevron">›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 高级设置页 ==================== -->
+        <div id="page-settings" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-earbuds')">←</button>
+                    <span class="header-title">高级设置</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('gesture', this)">手势</button>
+                    <button class="tab" onclick="switchTab('audio', this)">音频</button>
+                </div>
+
+                <!-- 手势设置 -->
+                <div id="tab-gesture" class="tab-content active">
+                    <div class="card">
+                        <div class="gesture-item" onclick="showGestureModal('左耳双击', 'leftDouble')">
+                            <span class="gesture-label">左耳双击</span>
+                            <div class="gesture-value">
+                                <span id="leftDouble">下一曲</span>
+                                <span>›</span>
+                            </div>
+                        </div>
+                        <div class="gesture-item" onclick="showGestureModal('左耳三击', 'leftTriple')">
+                            <span class="gesture-label">左耳三击</span>
+                            <div class="gesture-value">
+                                <span id="leftTriple">上一曲</span>
+                                <span>›</span>
+                            </div>
+                        </div>
+                        <div class="gesture-item" onclick="showGestureModal('右耳双击', 'rightDouble')">
+                            <span class="gesture-label">右耳双击</span>
+                            <div class="gesture-value">
+                                <span id="rightDouble">播放/暂停</span>
+                                <span>›</span>
+                            </div>
+                        </div>
+                        <div class="gesture-item" onclick="showGestureModal('右耳三击', 'rightTriple')">
+                            <span class="gesture-label">右耳三击</span>
+                            <div class="gesture-value">
+                                <span id="rightTriple">语音助手</span>
+                                <span>›</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 音频设置 -->
+                <div id="tab-audio" class="tab-content">
+                    <div class="card">
+                        <div class="switch-row">
+                            <div class="switch-label">
+                                <div class="switch-text">
+                                    <h4>佩戴检测</h4>
+                                    <p>摘下自动暂停</p>
+                                </div>
+                            </div>
+                            <button class="switch on" onclick="toggleSwitch(this)"></button>
+                        </div>
+                        <div class="switch-row">
+                            <div class="switch-label">
+                                <div class="switch-text">
+                                    <h4>空间音频</h4>
+                                    <p>沉浸式3D音效</p>
+                                </div>
+                            </div>
+                            <button class="switch on" onclick="toggleSwitch(this)"></button>
+                        </div>
+                        <div class="switch-row">
+                            <div class="switch-label">
+                                <div class="switch-text">
+                                    <h4>LHDC 5.0</h4>
+                                    <p>高清无损音质</p>
+                                </div>
+                            </div>
+                            <button class="switch on" onclick="toggleSwitch(this)"></button>
+                        </div>
+                    </div>
+
+                    <div class="section" style="margin-top: 20px;">
+                        <div class="card card-clickable" onclick="showToast('正在查找耳机...')">
+                            <div class="switch-row" style="padding: 4px 0;">
+                                <div class="switch-label">
+                                    <div class="switch-text">
+                                        <h4>🔍 查找耳机</h4>
+                                        <p>播放声音定位耳机</p>
+                                    </div>
+                                </div>
+                                <span class="chevron">›</span>
+                            </div>
+                        </div>
+                        <div class="card card-clickable" onclick="showToast('已是最新版本')">
+                            <div class="switch-row" style="padding: 4px 0;">
+                                <div class="switch-label">
+                                    <div class="switch-text">
+                                        <h4>📦 固件更新</h4>
+                                        <p>当前版本: v2.1.5</p>
+                                    </div>
+                                </div>
+                                <span class="chevron">›</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 定时停止页 ==================== -->
+        <div id="page-timer" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-earbuds')">←</button>
+                    <span class="header-title">定时停止</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="timer-display">
+                    <div class="timer-time" id="timerDisplay">00:30:00</div>
+                    <div class="timer-label" id="timerLabel">30 分钟后停止</div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">快捷设置</div>
+                    <div class="timer-presets">
+                        <button class="timer-preset" onclick="setTimer(15)">15分钟</button>
+                        <button class="timer-preset" onclick="setTimer(20)">20分钟</button>
+                        <button class="timer-preset active" onclick="setTimer(30)">30分钟</button>
+                        <button class="timer-preset" onclick="setTimer(45)">45分钟</button>
+                        <button class="timer-preset" onclick="setTimer(60)">1小时</button>
+                        <button class="timer-preset" onclick="setTimer(90)">1.5小时</button>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">指定时间点</div>
+                    <div class="card">
+                        <input type="time" style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 18px; text-align: center;" value="23:00" onchange="setTimerByTime(this.value)">
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="startTimer()">开始计时</button>
+                <button class="btn btn-secondary" style="margin-top: 12px;" onclick="cancelTimer()">取消定时</button>
+            </div>
+        </div>
+
+        <!-- ==================== 面对面翻译页 ==================== -->
+        <div id="page-translate-face" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-earbuds')">←</button>
+                    <span class="header-title">面对面翻译</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="card translate-card">
+                    <div class="translate-icon">🗣️</div>
+                    <div class="translate-status" id="translateStatus">点击开始翻译</div>
+                    <div class="translate-hint">将设备对准说话的人</div>
+                    <button class="translate-btn" id="translateBtn" onclick="toggleTranslate()">🎤</button>
+                    <div class="lang-selector">
+                        <button class="lang-btn" onclick="showLangModal('source')">中文</button>
+                        <button class="lang-swap" onclick="swapLang()">⇄</button>
+                        <button class="lang-btn" onclick="showLangModal('target')">英语</button>
+                    </div>
+                </div>
+
+                <div class="section" style="margin-top: 20px;">
+                    <div class="section-title">翻译记录</div>
+                    <div class="card">
+                        <div style="padding: 8px 0; border-bottom: 1px solid var(--border);">
+                            <div style="font-size: 13px; color: var(--muted);">中文</div>
+                            <div style="font-size: 15px; margin: 4px 0;">你好，很高兴认识你</div>
+                        </div>
+                        <div style="padding: 8px 0;">
+                            <div style="font-size: 13px; color: var(--primary);">English</div>
+                            <div style="font-size: 15px; margin: 4px 0;">Hello, nice to meet you</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 通话翻译页 ==================== -->
+        <div id="page-translate-call" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-earbuds')">←</button>
+                    <span class="header-title">通话翻译</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="card translate-card">
+                    <div class="translate-icon">📞</div>
+                    <div class="translate-status">等待来电</div>
+                    <div class="translate-hint">接听电话时自动翻译</div>
+                </div>
+
+                <div class="card">
+                    <div class="switch-row">
+                        <div class="switch-label">
+                            <div class="switch-text">
+                                <h4>自动翻译来电</h4>
+                                <p>检测到外语自动开启</p>
+                            </div>
+                        </div>
+                        <button class="switch on" onclick="toggleSwitch(this)"></button>
+                    </div>
+                    <div class="switch-row">
+                        <div class="switch-label">
+                            <div class="switch-text">
+                                <h4>翻译字幕显示</h4>
+                                <p>在屏幕上显示翻译</p>
+                            </div>
+                        </div>
+                        <button class="switch on" onclick="toggleSwitch(this)"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 同声传译页 ==================== -->
+        <div id="page-translate-sim" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-earbuds')">←</button>
+                    <span class="header-title">同声传译</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="card translate-card">
+                    <div class="translate-icon">🎙️</div>
+                    <div class="translate-status" id="simStatus">点击开始传译</div>
+                    <div class="translate-hint">适用于会议、演讲等场景</div>
+                    <button class="translate-btn" id="simBtn" onclick="toggleSim()">▶</button>
+                    <div class="lang-selector">
+                        <button class="lang-btn">英语 → 中文</button>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 20px;">
+                    <div class="section-title" style="margin-bottom: 12px;">实时字幕</div>
+                    <div style="min-height: 100px; background: var(--secondary); border-radius: 8px; padding: 12px; font-size: 14px; line-height: 1.6;">
+                        <span style="color: var(--muted);">等待语音输入...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== AI总结页 ==================== -->
+        <div id="page-summary" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-earbuds')">←</button>
+                    <span class="header-title">AI 总结</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="card translate-card">
+                    <div class="translate-icon">📝</div>
+                    <div class="translate-status" id="recordStatus">点击开始录音</div>
+                    <div class="translate-hint">录制会议内容，AI 自动生成摘要</div>
+                    <button class="translate-btn" id="recordBtn" onclick="toggleRecord()">⏺</button>
+                    <div style="margin-top: 16px; font-size: 24px; font-weight: 600; color: var(--muted);" id="recordTime">00:00</div>
+                </div>
+
+                <div class="section" style="margin-top: 20px;">
+                    <div class="section-title">历史记录</div>
+                    <div class="card card-clickable">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <div style="font-weight: 500; margin-bottom: 4px;">产品周会</div>
+                                <div style="font-size: 13px; color: var(--muted);">2024-05-19 14:30</div>
+                            </div>
+                            <div style="font-size: 13px; color: var(--primary);">45分钟</div>
+                        </div>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); line-height: 1.5;">
+                            会议讨论了Q2产品路线图，确定了三个核心功能的优先级...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 手表详情页 ==================== -->
+        <div id="page-watch" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-home')">←</button>
+                    <span class="header-title">Smart Watch 5</span>
+                </div>
+            </div>
+            <div class="content">
+                <!-- 设备状态 -->
+                <div class="card" style="text-align: center; padding: 24px;">
+                    <div style="font-size: 64px; margin-bottom: 12px;">⌚</div>
+                    <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">已连接</div>
+                    <div style="color: var(--muted); font-size: 14px;">电量 62%</div>
+                </div>
+
+                <!-- 快捷控制 -->
+                <div class="section">
+                    <div class="section-title">快捷控制</div>
+                    <div class="grid-4">
+                        <button class="quick-btn" onclick="toggleQuickBtn(this)">
+                            <span class="quick-btn-icon">🔔</span>
+                            <span class="quick-btn-label">查找手机</span>
+                        </button>
+                        <button class="quick-btn active" onclick="toggleQuickBtn(this)">
+                            <span class="quick-btn-icon">🎵</span>
+                            <span class="quick-btn-label">音乐控制</span>
+                        </button>
+                        <button class="quick-btn active" onclick="toggleQuickBtn(this)">
+                            <span class="quick-btn-icon">📱</span>
+                            <span class="quick-btn-label">来电提醒</span>
+                        </button>
+                        <button class="quick-btn" onclick="toggleQuickBtn(this)">
+                            <span class="quick-btn-icon">🌙</span>
+                            <span class="quick-btn-label">勿扰模式</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 手表功能 -->
+                <div class="section">
+                    <div class="section-title">手表功能</div>
+                    <div class="grid-2">
+                        <div class="feature-card" onclick="goToPage('page-watch-faces')">
+                            <div class="feature-icon blue">⏰</div>
+                            <div class="feature-info">
+                                <div class="feature-name">表盘市场</div>
+                                <div class="feature-desc">100+ 表盘</div>
+                            </div>
+                        </div>
+                        <div class="feature-card" onclick="goToPage('page-apps')">
+                            <div class="feature-icon purple">📱</div>
+                            <div class="feature-info">
+                                <div class="feature-name">应用管理</div>
+                                <div class="feature-desc">安装卸载</div>
+                            </div>
+                        </div>
+                        <div class="feature-card" onclick="goToPage('page-sports')">
+                            <div class="feature-icon green">🏃</div>
+                            <div class="feature-info">
+                                <div class="feature-name">运动模式</div>
+                                <div class="feature-desc">100+ 运动</div>
+                            </div>
+                        </div>
+                        <div class="feature-card" onclick="goToPage('page-payment')">
+                            <div class="feature-icon orange">💳</div>
+                            <div class="feature-info">
+                                <div class="feature-name">钱包支付</div>
+                                <div class="feature-desc">NFC 支付</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 健康数据 -->
+                <div class="section">
+                    <div class="section-title">今日数据</div>
+                    <div class="health-stats">
+                        <div class="health-stat">
+                            <div class="health-stat-icon">👣</div>
+                            <div class="health-stat-value">8,542</div>
+                            <div class="health-stat-label">步数</div>
+                        </div>
+                        <div class="health-stat">
+                            <div class="health-stat-icon">❤️</div>
+                            <div class="health-stat-value">72</div>
+                            <div class="health-stat-label">心率</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 表盘市场页 ==================== -->
+        <div id="page-watch-faces" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-watch')">←</button>
+                    <span class="header-title">表盘市场</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="section">
+                    <div class="section-title">我的表盘</div>
+                    <div class="watch-faces-grid">
+                        <div class="watch-face selected" onclick="selectWatchFace(this)">
+                            <div class="watch-face-time">10:24</div>
+                        </div>
+                        <div class="watch-face" onclick="selectWatchFace(this)" style="background: linear-gradient(135deg, #0f172a, #1e3a5f);">
+                            <div class="watch-face-time">10:24</div>
+                        </div>
+                        <div class="watch-face" onclick="selectWatchFace(this)" style="background: linear-gradient(135deg, #312e81, #4c1d95);">
+                            <div class="watch-face-time">10:24</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="section-title">推荐表盘</div>
+                    <div class="watch-faces-grid">
+                        <div class="watch-face" onclick="selectWatchFace(this)" style="background: linear-gradient(135deg, #064e3b, #047857);">
+                            <div class="watch-face-time">10:24</div>
+                        </div>
+                        <div class="watch-face" onclick="selectWatchFace(this)" style="background: linear-gradient(135deg, #7c2d12, #c2410c);">
+                            <div class="watch-face-time">10:24</div>
+                        </div>
+                        <div class="watch-face" onclick="selectWatchFace(this)" style="background: linear-gradient(135deg, #0c4a6e, #0369a1);">
+                            <div class="watch-face-time">10:24</div>
+                        </div>
+                        <div class="watch-face" onclick="selectWatchFace(this)" style="background: linear-gradient(135deg, #1f2937, #374151);">
+                            <div class="watch-face-time">10:24</div>
+                        </div>
+                        <div class="watch-face" onclick="selectWatchFace(this)" style="background: linear-gradient(135deg, #701a75, #a21caf);">
+                            <div class="watch-face-time">10:24</div>
+                        </div>
+                        <div class="watch-face" onclick="selectWatchFace(this)" style="background: linear-gradient(135deg, #14532d, #15803d);">
+                            <div class="watch-face-time">10:24</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 应用管理页 ==================== -->
+        <div id="page-apps" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-watch')">←</button>
+                    <span class="header-title">应用管理</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="section">
+                    <div class="section-title">已安装</div>
+                    <div class="card">
+                        <div class="switch-row">
+                            <div class="switch-label">
+                                <span style="font-size: 24px; margin-right: 8px;">🏃</span>
+                                <div class="switch-text">
+                                    <h4>运动</h4>
+                                    <p>v1.2.0</p>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" style="width: auto; padding: 8px 16px; font-size: 13px;">卸载</button>
+                        </div>
+                        <div class="switch-row">
+                            <div class="switch-label">
+                                <span style="font-size: 24px; margin-right: 8px;">❤️</span>
+                                <div class="switch-text">
+                                    <h4>心率</h4>
+                                    <p>v2.0.1</p>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" style="width: auto; padding: 8px 16px; font-size: 13px;">卸载</button>
+                        </div>
+                        <div class="switch-row">
+                            <div class="switch-label">
+                                <span style="font-size: 24px; margin-right: 8px;">🌤️</span>
+                                <div class="switch-text">
+                                    <h4>天气</h4>
+                                    <p>v1.5.2</p>
+                                </div>
+                            </div>
+                            <button class="btn btn-secondary" style="width: auto; padding: 8px 16px; font-size: 13px;">卸载</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="section-title">推荐应用</div>
+                    <div class="card">
+                        <div class="switch-row">
+                            <div class="switch-label">
+                                <span style="font-size: 24px; margin-right: 8px;">🎵</span>
+                                <div class="switch-text">
+                                    <h4>音乐</h4>
+                                    <p>离线音乐播放</p>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" style="width: auto; padding: 8px 16px; font-size: 13px;" onclick="showToast('正在安装...')">安装</button>
+                        </div>
+                        <div class="switch-row">
+                            <div class="switch-label">
+                                <span style="font-size: 24px; margin-right: 8px;">🧭</span>
+                                <div class="switch-text">
+                                    <h4>指南针</h4>
+                                    <p>方向导航</p>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" style="width: auto; padding: 8px 16px; font-size: 13px;" onclick="showToast('正在安装...')">安装</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 运动模式页 ==================== -->
+        <div id="page-sports" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-watch')">←</button>
+                    <span class="header-title">运动模式</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="section">
+                    <div class="section-title">常用运动</div>
+                    <div class="grid-2">
+                        <div class="feature-card" onclick="showToast('开始户外跑步')">
+                            <div class="feature-icon green">🏃</div>
+                            <div class="feature-info">
+                                <div class="feature-name">户外跑步</div>
+                            </div>
+                        </div>
+                        <div class="feature-card" onclick="showToast('开始室内跑步')">
+                            <div class="feature-icon blue">🏃‍♂️</div>
+                            <div class="feature-info">
+                                <div class="feature-name">室内跑步</div>
+                            </div>
+                        </div>
+                        <div class="feature-card" onclick="showToast('开始户外骑行')">
+                            <div class="feature-icon orange">🚴</div>
+                            <div class="feature-info">
+                                <div class="feature-name">户外骑行</div>
+                            </div>
+                        </div>
+                        <div class="feature-card" onclick="showToast('开始游泳')">
+                            <div class="feature-icon purple">🏊</div>
+                            <div class="feature-info">
+                                <div class="feature-name">游泳</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="section-title">更多运动 (100+)</div>
+                    <div class="card">
+                        <div class="gesture-item" onclick="showToast('开始瑜伽')">
+                            <span>🧘 瑜伽</span>
+                            <span class="chevron">›</span>
+                        </div>
+                        <div class="gesture-item" onclick="showToast('开始登山')">
+                            <span>🧗 登山</span>
+                            <span class="chevron">›</span>
+                        </div>
+                        <div class="gesture-item" onclick="showToast('开始跳绳')">
+                            <span>🏋️ 跳绳</span>
+                            <span class="chevron">›</span>
+                        </div>
+                        <div class="gesture-item" onclick="showToast('开始划船')">
+                            <span>🚣 划船</span>
+                            <span class="chevron">›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 支付页 ==================== -->
+        <div id="page-payment" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-watch')">←</button>
+                    <span class="header-title">钱包支付</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="section">
+                    <div class="section-title">支付方式</div>
+                    <div class="card card-clickable" onclick="showToast('打开微信支付')">
+                        <div class="switch-row" style="padding: 4px 0;">
+                            <div class="switch-label">
+                                <span style="font-size: 28px; margin-right: 12px;">💚</span>
+                                <div class="switch-text">
+                                    <h4>微信支付</h4>
+                                    <p>已绑定</p>
+                                </div>
+                            </div>
+                            <span class="chevron">›</span>
+                        </div>
+                    </div>
+                    <div class="card card-clickable" onclick="showToast('打开支付宝')">
+                        <div class="switch-row" style="padding: 4px 0;">
+                            <div class="switch-label">
+                                <span style="font-size: 28px; margin-right: 12px;">💙</span>
+                                <div class="switch-text">
+                                    <h4>支付宝</h4>
+                                    <p>已绑定</p>
+                                </div>
+                            </div>
+                            <span class="chevron">›</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="section-title">交通卡</div>
+                    <div class="card card-clickable" onclick="showToast('打开交通卡')">
+                        <div class="switch-row" style="padding: 4px 0;">
+                            <div class="switch-label">
+                                <span style="font-size: 28px; margin-right: 12px;">🚇</span>
+                                <div class="switch-text">
+                                    <h4>北京一卡通</h4>
+                                    <p>余额 ¥56.00</p>
+                                </div>
+                            </div>
+                            <span class="chevron">›</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="section">
+                    <div class="section-title">门禁卡</div>
+                    <div class="card card-clickable" onclick="showToast('添加门禁卡')">
+                        <div style="text-align: center; padding: 20px; color: var(--muted);">
+                            <div style="font-size: 32px; margin-bottom: 8px;">+</div>
+                            <div>添加门禁卡</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 设备管理页 ==================== -->
+        <div id="page-devices" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-home')">←</button>
+                    <span class="header-title">设备管理</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="section">
+                    <div class="section-title">已连接设备</div>
+                    <div class="card card-clickable" onclick="goToPage('page-earbuds')">
+                        <div class="device-card">
+                            <div class="device-icon earbuds">🎧</div>
+                            <div class="device-info">
+                                <div class="device-name">Pro Buds 3</div>
+                                <div class="device-status">
+                                    <span class="status-dot"></span>
+                                    已连接
+                                </div>
+                            </div>
+                            <span class="chevron">›</span>
+                        </div>
+                    </div>
+                    <div class="card card-clickable" onclick="goToPage('page-watch')">
+                        <div class="device-card">
+                            <div class="device-icon watch">⌚</div>
+                            <div class="device-info">
+                                <div class="device-name">Smart Watch 5</div>
+                                <div class="device-status">
+                                    <span class="status-dot"></span>
+                                    已连接
+                                </div>
+                            </div>
+                            <span class="chevron">›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 我的页 ==================== -->
+        <div id="page-profile" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <span class="header-title">我的</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="profile-header">
+                    <div class="avatar">👤</div>
+                    <div class="profile-name">用户名</div>
+                    <div class="profile-id">ID: 12345678</div>
+                </div>
+
+                <div class="section">
+                    <div class="menu-item" onclick="goToPage('page-profile-info')">
+                        <div class="menu-icon blue">👤</div>
+                        <div class="menu-text">
+                            <div class="menu-title">个人资料</div>
+                        </div>
+                        <span class="chevron">›</span>
+                    </div>
+                    <div class="menu-item" onclick="goToPage('page-health')">
+                        <div class="menu-icon green">❤️</div>
+                        <div class="menu-text">
+                            <div class="menu-title">健康档案</div>
+                        </div>
+                        <span class="chevron">›</span>
+                    </div>
+                    <div class="menu-item" onclick="goToPage('page-goals')">
+                        <div class="menu-icon orange">🎯</div>
+                        <div class="menu-text">
+                            <div class="menu-title">健康目标</div>
+                        </div>
+                        <span class="chevron">›</span>
+                    </div>
+                    <div class="menu-item" onclick="goToPage('page-notifications')">
+                        <div class="menu-icon purple">🔔</div>
+                        <div class="menu-text">
+                            <div class="menu-title">通知设置</div>
+                        </div>
+                        <span class="chevron">›</span>
+                    </div>
+                    <div class="menu-item" onclick="showToast('帮助与反馈')">
+                        <div class="menu-icon blue">❓</div>
+                        <div class="menu-text">
+                            <div class="menu-title">帮助与反馈</div>
+                        </div>
+                        <span class="chevron">›</span>
+                    </div>
+                    <div class="menu-item" onclick="showToast('关于我们')">
+                        <div class="menu-icon green">ℹ️</div>
+                        <div class="menu-text">
+                            <div class="menu-title">关于</div>
+                            <div class="menu-desc">版本 1.0.0</div>
+                        </div>
+                        <span class="chevron">›</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 个人资料页 ==================== -->
+        <div id="page-profile-info" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-profile')">←</button>
+                    <span class="header-title">个人资料</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="profile-header">
+                    <div class="avatar" onclick="showToast('更换头像')">👤</div>
+                    <div style="font-size: 14px; color: var(--primary); cursor: pointer;" onclick="showToast('更换头像')">点击更换头像</div>
+                </div>
+                <div class="card">
+                    <div class="gesture-item">
+                        <span class="gesture-label">昵称</span>
+                        <div class="gesture-value" onclick="showToast('修改昵称')">
+                            <span>用户名</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                    <div class="gesture-item">
+                        <span class="gesture-label">性别</span>
+                        <div class="gesture-value" onclick="showToast('修改性别')">
+                            <span>男</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                    <div class="gesture-item">
+                        <span class="gesture-label">生日</span>
+                        <div class="gesture-value" onclick="showToast('修改生日')">
+                            <span>1990-01-01</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                    <div class="gesture-item">
+                        <span class="gesture-label">手机</span>
+                        <div class="gesture-value" onclick="showToast('修改手机')">
+                            <span>138****8888</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 健康档案页 ==================== -->
+        <div id="page-health" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-profile')">←</button>
+                    <span class="header-title">健康档案</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="card">
+                    <div class="gesture-item" onclick="showEditModal('身高', '175', 'cm')">
+                        <span class="gesture-label">身高</span>
+                        <div class="gesture-value">
+                            <span>175 cm</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                    <div class="gesture-item" onclick="showEditModal('体重', '70', 'kg')">
+                        <span class="gesture-label">体重</span>
+                        <div class="gesture-value">
+                            <span>70 kg</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                    <div class="gesture-item" onclick="showToast('修改血型')">
+                        <span class="gesture-label">血型</span>
+                        <div class="gesture-value">
+                            <span>A型</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                    <div class="gesture-item" onclick="showToast('修改过敏史')">
+                        <span class="gesture-label">过敏史</span>
+                        <div class="gesture-value">
+                            <span>无</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 健康目标页 ==================== -->
+        <div id="page-goals" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-profile')">←</button>
+                    <span class="header-title">健康目标</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="card">
+                    <div class="gesture-item" onclick="showToast('修改步数目标')">
+                        <span class="gesture-label">每日步数</span>
+                        <div class="gesture-value">
+                            <span>10,000 步</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                    <div class="gesture-item" onclick="showToast('修改卡路里目标')">
+                        <span class="gesture-label">消耗卡路里</span>
+                        <div class="gesture-value">
+                            <span>500 千卡</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                    <div class="gesture-item" onclick="showToast('修改睡眠目标')">
+                        <span class="gesture-label">睡眠时长</span>
+                        <div class="gesture-value">
+                            <span>8 小时</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                    <div class="gesture-item" onclick="showToast('修改体重目标')">
+                        <span class="gesture-label">目标体重</span>
+                        <div class="gesture-value">
+                            <span>68 kg</span>
+                            <span>›</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 通知设置页 ==================== -->
+        <div id="page-notifications" class="page">
+            <div class="header">
+                <div class="header-left">
+                    <button class="back-btn" onclick="goToPage('page-profile')">←</button>
+                    <span class="header-title">通知设置</span>
+                </div>
+            </div>
+            <div class="content">
+                <div class="card">
+                    <div class="switch-row">
+                        <div class="switch-label">
+                            <div class="switch-text">
+                                <h4>运动提醒</h4>
+                                <p>久坐提醒</p>
+                            </div>
+                        </div>
+                        <button class="switch on" onclick="toggleSwitch(this)"></button>
+                    </div>
+                    <div class="switch-row">
+                        <div class="switch-label">
+                            <div class="switch-text">
+                                <h4>目标达成</h4>
+                                <p>完成目标时通知</p>
+                            </div>
+                        </div>
+                        <button class="switch on" onclick="toggleSwitch(this)"></button>
+                    </div>
+                    <div class="switch-row">
+                        <div class="switch-label">
+                            <div class="switch-text">
+                                <h4>心率异常</h4>
+                                <p>心率过高/过低提醒</p>
+                            </div>
+                        </div>
+                        <button class="switch on" onclick="toggleSwitch(this)"></button>
+                    </div>
+                    <div class="switch-row">
+                        <div class="switch-label">
+                            <div class="switch-text">
+                                <h4>勿扰模式</h4>
+                                <p>22:00 - 08:00</p>
+                            </div>
+                        </div>
+                        <button class="switch" onclick="toggleSwitch(this)"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== 底部导航 ==================== -->
+        <div class="bottom-nav">
+            <button class="nav-item active" onclick="navTo('page-home', this)">
+                <span class="nav-icon">🏠</span>
+                <span class="nav-label">首页</span>
+            </button>
+            <button class="nav-item" onclick="navTo('page-devices', this)">
+                <span class="nav-icon">📱</span>
+                <span class="nav-label">设备</span>
+            </button>
+            <button class="nav-item" onclick="navTo('page-profile', this)">
+                <span class="nav-icon">👤</span>
+                <span class="nav-label">我的</span>
+            </button>
+        </div>
+
+        <!-- ==================== 模态框 ==================== -->
+        <div class="modal-overlay" id="gestureModal" onclick="closeModal(event)">
+            <div class="modal">
+                <div class="modal-header">
+                    <span class="modal-title" id="gestureModalTitle">选择操作</span>
+                    <button class="modal-close" onclick="hideGestureModal()">×</button>
+                </div>
+                <div class="selection-list" id="gestureOptions"></div>
+            </div>
+        </div>
+
+        <!-- Toast -->
+        <div class="toast" id="toast"></div>
+    </div>
+
+    <script>
+        // 页面导航
+        function goToPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        function navTo(pageId, btn) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            btn.classList.add('active');
+            goToPage(pageId);
+        }
+
+        // 开关切换
+        function toggleSwitch(el) {
+            if (typeof el === 'string') {
+                el = document.getElementById(el);
+            }
+            el.classList.toggle('on');
+        }
+
+        // 快捷按钮切换
+        function toggleQuickBtn(btn) {
+            btn.classList.toggle('active');
+        }
+
+        // 均衡器预设
+        let isCustomEq = false;
+        function selectEqPreset(btn, isCustom) {
+            document.querySelectorAll('.eq-preset').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            isCustomEq = isCustom;
+            document.getElementById('saveEqBtn').style.display = isCustom ? 'block' : 'none';
+            
+            // 启用/禁用滑块
+            const sliders = document.querySelectorAll('.eq-slider');
+            sliders.forEach(s => {
+                s.style.pointerEvents = isCustom ? 'auto' : 'none';
+                s.style.opacity = isCustom ? '1' : '0.6';
+            });
+        }
+
+        // 初始化均衡器滑块
+        document.querySelectorAll('.eq-slider').forEach(slider => {
+            slider.style.pointerEvents = 'none';
+            slider.style.opacity = '0.6';
+            
+            slider.addEventListener('click', function(e) {
+                if (!isCustomEq) return;
+                const rect = this.getBoundingClientRect();
+                const percent = Math.max(0, Math.min(100, ((rect.bottom - e.clientY) / rect.height) * 100));
+                this.querySelector('.eq-slider-fill').style.height = percent + '%';
+                this.querySelector('.eq-slider-thumb').style.bottom = 'calc(' + percent + '% - 8px)';
+            });
+        });
+
+        // 定时器
+        let timerMinutes = 30;
+        function setTimer(minutes) {
+            timerMinutes = minutes;
+            document.querySelectorAll('.timer-preset').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            updateTimerDisplay();
+        }
+
+        function setTimerByTime(time) {
+            const [hours, mins] = time.split(':').map(Number);
+            const now = new Date();
+            const target = new Date();
+            target.setHours(hours, mins, 0, 0);
+            if (target <= now) target.setDate(target.getDate() + 1);
+            timerMinutes = Math.round((target - now) / 60000);
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const hours = Math.floor(timerMinutes / 60);
+            const mins = timerMinutes % 60;
+            document.getElementById('timerDisplay').textContent = 
+                String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0') + ':00';
+            document.getElementById('timerLabel').textContent = 
+                (hours > 0 ? hours + ' 小时 ' : '') + (mins > 0 ? mins + ' 分钟后停止' : '');
+        }
+
+        function startTimer() {
+            document.getElementById('timerStatus').textContent = timerMinutes + ' 分钟后停止';
+            showToast('定时已设置');
+            goToPage('page-earbuds');
+        }
+
+        function cancelTimer() {
+            document.getElementById('timerStatus').textContent = '未设置';
+            showToast('定时已取消');
+            goToPage('page-earbuds');
+        }
+
+        // 翻译功能
+        let isTranslating = false;
+        function toggleTranslate() {
+            isTranslating = !isTranslating;
+            const btn = document.getElementById('translateBtn');
+            const status = document.getElementById('translateStatus');
+            if (isTranslating) {
+                btn.classList.add('recording');
+                status.textContent = '正在翻译...';
+            } else {
+                btn.classList.remove('recording');
+                status.textContent = '点击开始翻译';
+            }
+        }
+
+        function swapLang() {
+            showToast('语言已交换');
+        }
+
+        // 同声传译
+        let isSimulating = false;
+        function toggleSim() {
+            isSimulating = !isSimulating;
+            const btn = document.getElementById('simBtn');
+            const status = document.getElementById('simStatus');
+            if (isSimulating) {
+                btn.classList.add('recording');
+                btn.textContent = '⏸';
+                status.textContent = '正在传译...';
+            } else {
+                btn.classList.remove('recording');
+                btn.textContent = '▶';
+                status.textContent = '点击开始传译';
+            }
+        }
+
+        // 录音
+        let isRecording = false;
+        let recordSeconds = 0;
+        let recordInterval;
+        function toggleRecord() {
+            isRecording = !isRecording;
+            const btn = document.getElementById('recordBtn');
+            const status = document.getElementById('recordStatus');
+            const time = document.getElementById('recordTime');
+            
+            if (isRecording) {
+                btn.classList.add('recording');
+                btn.textContent = '⏹';
+                status.textContent = '正在录音...';
+                recordSeconds = 0;
+                recordInterval = setInterval(() => {
+                    recordSeconds++;
+                    const mins = Math.floor(recordSeconds / 60);
+                    const secs = recordSeconds % 60;
+                    time.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+                }, 1000);
+            } else {
+                btn.classList.remove('recording');
+                btn.textContent = '⏺';
+                status.textContent = '点击开始录音';
+                clearInterval(recordInterval);
+                if (recordSeconds > 5) {
+                    showToast('录音已保存，正在生成摘要...');
+                }
+            }
+        }
+
+        // 手势设置
+        const gestureOptions = ['上一曲', '下一曲', '播放/暂停', '接电话/挂断', '语音助手', '同传翻译', '会议总结', '无操作'];
+        let currentGestureId = '';
+
+        function showGestureModal(title, id) {
+            currentGestureId = id;
+            document.getElementById('gestureModalTitle').textContent = title;
+            const currentValue = document.getElementById(id).textContent;
+            
+            let html = '';
+            gestureOptions.forEach(opt => {
+                const isSelected = opt === currentValue;
+                html += `<div class="selection-item ${isSelected ? 'selected' : ''}" onclick="selectGesture('${opt}')">
+                    <span>${opt}</span>
+                    ${isSelected ? '<span class="check-icon">✓</span>' : ''}
+                </div>`;
+            });
+            document.getElementById('gestureOptions').innerHTML = html;
+            document.getElementById('gestureModal').classList.add('show');
+        }
+
+        function selectGesture(value) {
+            document.getElementById(currentGestureId).textContent = value;
+            hideGestureModal();
+            showToast('已设置为: ' + value);
+        }
+
+        function hideGestureModal() {
+            document.getElementById('gestureModal').classList.remove('show');
+        }
+
+        function closeModal(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                hideGestureModal();
+            }
+        }
+
+        // Tab 切换
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+
+        // 表盘选择
+        function selectWatchFace(el) {
+            document.querySelectorAll('.watch-face').forEach(w => w.classList.remove('selected'));
+            el.classList.add('selected');
+            showToast('表盘已应用');
+        }
+
+        // Toast 提示
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        // 编辑弹窗
+        function showEditModal(label, value, unit) {
+            showToast('修改' + label + ': ' + value + ' ' + unit);
+        }
+    </script>
+</body>
+</html>
